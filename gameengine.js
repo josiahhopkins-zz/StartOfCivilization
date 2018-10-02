@@ -112,7 +112,7 @@ GameEngine.prototype.draw = function () {
 
 GameEngine.prototype.update = function () {
     this.gameController.turn += 1;
-    if(this.gameController.turn % 50 === 0) this.gameController.floodSeason = !this.gameController.floodSeason //TODO
+    if(this.gameController.turn % 25 === 0) this.gameController.floodSeason = !this.gameController.floodSeason //TODO
     var entitiesCount = this.entities.length;
 
     for (var i = 0; i < entitiesCount; i++) {

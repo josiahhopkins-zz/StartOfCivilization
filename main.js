@@ -43,6 +43,20 @@ function Agent(game, x, y, agent) {
     Entity.call(this, game, x, y);
 }
 
+function Herbivore(game, x, y, herbivore){
+
+    Entity.call(this, game, x, y);
+}
+
+Herbivore.prototype = new Entity();
+Herbivore.prototype.update = function () {
+
+}
+
+Herbivore.prototype.chooseMove = function(){
+
+}
+
 Agent.prototype = new Entity();
 Agent.prototype.constructor = Agent;
 
@@ -59,9 +73,9 @@ Agent.prototype.update = function () {
             cell.population++;
             cell.water -= 1;
             //Log genetics
-            if(Math.random() < .0001){
-                console.log(this.seedWeight);
-            }
+            // if(Math.random() < .0001){
+            //     console.log(this.seedWeight);
+            // }
             placeWheatInBucket(this.game, this.seedWeight);
         }
         else if(Math.random() < seedHardiness){
