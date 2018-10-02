@@ -28,6 +28,7 @@ function Agent(game, x, y, agent) {
 
     var val = Math.floor(256 * this.seedWeight);
     this.isSeed = true;
+    this.age = 0;
     this.color = rgb(val,val,val);
     if( this.seedWeight < .3){
         this.color = "Orange";
@@ -49,7 +50,8 @@ Agent.prototype.update = function () {
     var SEEDDROP = 2;
     var cell = this.game.board.board[this.x][this.y];
     var dropDistance = Math.floor(this.seedWeight * 6) + 1;
-    var seedHardiness = dropDistance * dropDistance;
+    var seedHardiness = this.seedWeight * this.seedWeight;
+    var reproductionAge = 15 * this.seedWeight;
 
     if(this.isSeed){
         if(cell.water > 0 && (Math.random() > 0.02 * cell.population * cell.population)){
@@ -60,14 +62,16 @@ Agent.prototype.update = function () {
             if(Math.random() < .0001){
                 console.log(this.seedWeight);
             }
+            placeWheatInBucket(this.game, this.seedWeight);
         }
         else if(Math.random() < seedHardiness){
             this.dead = true;
         }
     } else{
+        this.age++;
         cell.water -= 1;
         // did I die?
-        if (Math.random() < 0.02 * cell.population * cell.population) {
+        if (Math.random() < 0.02 * cell.population * cell.population && this.age > reproductionAge) {
             this.dead = true;
             cell.population -= 1;
             for(var i = 0; i < SEEDDROP; i++){
@@ -81,11 +85,13 @@ Agent.prototype.update = function () {
                     }
                 }
             }
+            removeWheatInBucket(this.game, this.seedWeight);
         } 
         //Dying of thirst prevents reproduction
         else if (cell.water < 1){
             this.dead = true; 
             cell.population -= 1;
+            removeWheatInBucket(this.game, this.seedWeight);
         }
     }
 }
@@ -133,6 +139,26 @@ Cell.prototype.update = function () {
     }
 }
 
+/*
+Binary search is better but when the array is of length 3 this works. As we add more genetic factors and try to speciate more we will
+Have to implement better solutions.
+*/
+function placeWheatInBucket(game, wheatValue){
+    var placement = 0;
+    while(placement < game.statistics.wheatTypes.length && wheatValue > game.statistics.wheatTypes[placement]){
+        placement++;
+    }
+    game.statistics.wheatTypeCount[placement]++;
+}
+
+function removeWheatInBucket(game, wheatValue){
+    var placement = 0; 
+    while(placement < game.statistics.wheatTypes.length && wheatValue > game.statistics.wheatTypes[placement]){
+        placement++;
+    }
+    game.statistics.wheatTypeCount[placement]--;
+}
+
 
 function Automata(game) {
     var SPLITCHANCE = .01;
@@ -140,6 +166,9 @@ function Automata(game) {
     this.populationSize = 100;
     this.agents = [];
     game.babies = [];
+    game.statistics = {};
+    game.statistics.wheatTypes = [.3, .7, 1];
+    game.statistics.wheatTypeCount = [0, 0, 0];
 
     // create board
     this.board = [];
@@ -240,6 +269,8 @@ Automata.prototype.update = function () {
             this.board[i][j].update();
         }
     }
+    console.log(this.game.gameController.floodSeason);
+    console.log(this.game.statistics.wheatTypeCount);
 };
 
 Automata.prototype.draw = function (ctx) {
