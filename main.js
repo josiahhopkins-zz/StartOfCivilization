@@ -30,6 +30,7 @@ function Agent(game, x, y, agent) {
     this.isSeed = true;
     this.age = 0;
     this.color = rgb(val,val,val);
+    this.geneticType = placeWheatInBucket(game, this.seedWeight);
     if( this.seedWeight < .3){
         this.color = "Orange";
     } else if (this.seedWeight > .7){
@@ -43,19 +44,20 @@ function Agent(game, x, y, agent) {
     Entity.call(this, game, x, y);
 }
 
-function Herbivore(game, x, y, herbivore){
+function Animal(game, x, y, Animal){
+    this.age = 0;
+    this.genome = mutate(Animal)
+
 
     Entity.call(this, game, x, y);
 }
 
-Herbivore.prototype = new Entity();
-Herbivore.prototype.update = function () {
+Animal.prototype = new Entity();
+Animal.prototype.update = function(){
 
 }
 
-Herbivore.prototype.chooseMove = function(){
-
-}
+//Herbivore.prototype = new Animal();
 
 Agent.prototype = new Entity();
 Agent.prototype.constructor = Agent;
@@ -76,7 +78,7 @@ Agent.prototype.update = function () {
             // if(Math.random() < .0001){
             //     console.log(this.seedWeight);
             // }
-            placeWheatInBucket(this.game, this.seedWeight);
+            this.game.statistics.wheatTypeCount[this.geneticType]++;
         }
         else if(Math.random() < seedHardiness){
             this.dead = true;
@@ -162,7 +164,7 @@ function placeWheatInBucket(game, wheatValue){
     while(placement < game.statistics.wheatTypes.length && wheatValue > game.statistics.wheatTypes[placement]){
         placement++;
     }
-    game.statistics.wheatTypeCount[placement]++;
+    return placement;
 }
 
 function removeWheatInBucket(game, wheatValue){
@@ -287,6 +289,21 @@ Automata.prototype.update = function () {
     console.log(this.game.statistics.wheatTypeCount);
 };
 
+Automata.prototype.draw_graph = function (ctx, baseX, baseY, proportions, proportionColors){
+    var size = 8; //
+    if(proportionColors.length != proportions.length){
+        console.error("You cannot draw a graph without equal length color list and to graph list");
+    }
+
+    var current = 0; 
+    for (var i = 0; i < proportions.length; i++){
+        ctx.fillStyle = proportionColors[i];
+        ctx.fillRect(baseX, baseY + current * size, size, size * proportions[i]);
+        current += proportions[i];
+    }
+
+}
+
 Automata.prototype.draw = function (ctx) {
     var size = 8;
     for (var i = 0; i < this.dimension; i++) {
@@ -315,6 +332,15 @@ Automata.prototype.draw = function (ctx) {
         ctx.fill();
     }
     */
+
+
+    //TODO change
+    var wheatProportions = [0, 0, 0];
+    var wheatColors = ["Black", "Grey", "Yellow"];
+    for( var i = 0; i < this.agents.length; i++){
+        wheatProportions[this.agents[i].geneticType]++;
+    }
+    this.draw_graph(ctx, (this.dimension + 1) * size, 0, wheatProportions, wheatColors);
 };
 
 

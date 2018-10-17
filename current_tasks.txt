@@ -1,0 +1,4 @@
+Create abstract animal class        
+Extend into generic herbivore
+Clean code a little bit //Put shit into a single environment object that just maps SO WE DONT HAVE MAGIC NUMBERS
+Implement simple gui to display population statistics.
