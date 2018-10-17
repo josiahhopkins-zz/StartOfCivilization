@@ -45,11 +45,16 @@ function Agent(game, x, y, agent) {
 
     Entity.call(this, game, x, y);
 }
-
-function Animal(game, x, y, Animal){
+Animal.prototype.mutate = function(animal) {
+    return animal.genome;
+}
+function Animal(game, x, y, animal){
+    this.color = "Magenta";
     this.age = 0;
-    this.genome = mutate(Animal)
-
+    //this.genome = mutate(animal)
+    this.hydration = 1;
+    this.fullness = 1;
+    this.isDead = false;
 
     Entity.call(this, game, x, y);
 }
@@ -59,7 +64,13 @@ Animal.prototype.update = function(){
 
 }
 
-//Herbivore.prototype = new Animal();
+var Herbivore = function(game, x, y, Herbivore){
+    Animal.call(this);
+    this.x = x;
+    this.y = y;
+    this.color = "Purple";
+}   
+
 
 Agent.prototype = new Entity();
 Agent.prototype.constructor = Agent;
@@ -117,6 +128,7 @@ Agent.prototype.update = function () {
 function Cell(game,x,y) {
     this.x = x;
     this.y = y;
+    this.scent = {};
     this.game = game;
     this.isRiver = false;
     this.water = 0;
@@ -182,8 +194,10 @@ function Automata(game) {
     var SPLITCHANCE = .01;
     this.dimension = 100;
     this.populationSize = 100;
+    this.animalPopulationSize = 50;
     this.agents = [];
     game.babies = [];
+    this.animals =[];
     game.statistics = {};
     game.statistics.wheatTypes = [.3, .7, 1];
     game.statistics.wheatTypeCount = [0, 0, 0];
@@ -252,6 +266,15 @@ function Automata(game) {
         var agent = new Agent(game, x, y);
         this.agents.push(agent);
         this.board[x][y].population += 1;
+    }
+
+    // add agents
+    while (this.animals.length < this.animalPopulationSize) {
+        var x = randomInt(this.dimension);
+        var y = randomInt(this.dimension);
+
+        var animal = new Herbivore(game, x, y);
+        this.animals.push(animal);
     }
     
 
@@ -330,14 +353,14 @@ Automata.prototype.draw = function (ctx) {
         }
     }
 
-    /*
-    for (var i = 0; i < this.agents.length; i++) {
-        ctx.fillStyle = this.agents[i].color;
+    
+    for (var i = 0; i < this.animals.length; i++) {
+        ctx.fillStyle = this.animals[i].color;
         ctx.beginPath();
-        ctx.arc((this.agents[i].x * size) + (size / 2), (this.agents[i].y * size) + (size / 2), (size / 2), 0, 2 * Math.PI, false);
+        ctx.arc((this.animals[i].x * size) + (size / 2), (this.animals[i].y * size) + (size / 2), (size / 2), 0, 2 * Math.PI, false);
         ctx.fill();
     }
-    */
+    
 
 
     //TODO change
