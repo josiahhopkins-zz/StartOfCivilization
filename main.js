@@ -1,3 +1,5 @@
+var graphCtx = null;
+
 function getGameControl(game){
     var toReturn = game.gameController;
     toReturn.riverReach = 8;
@@ -290,16 +292,20 @@ Automata.prototype.update = function () {
 };
 
 Automata.prototype.draw_graph = function (ctx, baseX, baseY, proportions, proportionColors){
-    var size = 8; //
+    var width = 8;
+    ctx.fillStyle = "White";
+    ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
     if(proportionColors.length != proportions.length){
         console.error("You cannot draw a graph without equal length color list and to graph list");
     }
 
-    var current = 0; 
+    var total = proportions.reduce(add, 0);
+    var currentHeight = 0; 
     for (var i = 0; i < proportions.length; i++){
+        var barHeight = proportions[i] / total * ctx.canvas.height;
         ctx.fillStyle = proportionColors[i];
-        ctx.fillRect(baseX, baseY + current * size, size, size * proportions[i]);
-        current += proportions[i];
+        ctx.fillRect(baseX, baseY + currentHeight, width, proportions[i]);
+        currentHeight += barHeight;
     }
 
 }
@@ -340,8 +346,12 @@ Automata.prototype.draw = function (ctx) {
     for( var i = 0; i < this.agents.length; i++){
         wheatProportions[this.agents[i].geneticType]++;
     }
-    this.draw_graph(ctx, (this.dimension + 1) * size, 0, wheatProportions, wheatColors);
+    this.draw_graph(graphCtx, 0, 0, wheatProportions, wheatColors);
 };
+
+function add(a, b) {
+    return a + b;
+}
 
 
 // the "main" code begins here
@@ -356,6 +366,7 @@ ASSET_MANAGER.downloadAll(function () {
     console.log("starting up da sheild");
     var canvas = document.getElementById('gameWorld');
     var ctx = canvas.getContext('2d');
+    graphCtx = document.getElementById('graphWorld').getContext('2d');
 
 
     var gameEngine = new GameEngine();
