@@ -51,7 +51,13 @@ GameEngine.prototype.init = function (ctx) {
 GameEngine.prototype.start = function () {
     console.log("starting game");
     var that = this;
-    this.gameController = {gameName:"CurrentGame", turn:1, floodSeason: false};
+    this.gameController = {gameName:"CurrentGame",
+                            turn:1, 
+                            floodSeason: false, 
+                            settings: {
+                                floodTurns: 25
+                            }
+                        };
     (function gameLoop() {
         that.loop();
 
@@ -112,7 +118,7 @@ GameEngine.prototype.draw = function () {
 
 GameEngine.prototype.update = function () {
     this.gameController.turn += 1;
-    if(this.gameController.turn % 25 === 0) this.gameController.floodSeason = !this.gameController.floodSeason //TODO
+    if(this.gameController.turn % this.gameController.settings.floodTurns === 0) this.gameController.floodSeason = !this.gameController.floodSeason //TODO
     var entitiesCount = this.entities.length;
 
     for (var i = 0; i < entitiesCount; i++) {

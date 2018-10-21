@@ -1,8 +1,18 @@
 var graphCtx = null;
+var settings = {
+                drawingWidth: 8,
+                floodDistance: 11,
+                maxWater: 20,
+                wheat: {
+                    maxAge: 50,
+                    maxDropDistance: 6,
+                    baseReproductionAge: 15,
+                    wheatColors: ["Black", "Grey", "Yellow"]
+                }
+            };
 
 function getGameControl(game){
     var toReturn = game.gameController;
-    toReturn.riverReach = 8;
     return toReturn;
 }
 
@@ -33,15 +43,11 @@ function Agent(game, x, y, agent) {
     this.age = 0;
     this.color = rgb(val,val,val);
     this.geneticType = placeWheatInBucket(game, this.seedWeight);
-    if( this.seedWeight < .3){
-        this.color = "Orange";
-    } else if (this.seedWeight > .7){
-        this.color = "Purple";
-    } else{
-        this.color = "Yellow";
-    }
-    this.maxAge = 50;
-    this.age = this.maxAge;
+
+    this.dropDistance = this.calcDropDistance();
+    this.numOfSeeds = this.calcSeedDrop();
+    this.reproductionAge = this.calcReproductionAge();
+    this.maxAge = settings.wheat.MaxAge;
 
     Entity.call(this, game, x, y);
 }
@@ -75,22 +81,27 @@ var Herbivore = function(game, x, y, Herbivore){
 Agent.prototype = new Entity();
 Agent.prototype.constructor = Agent;
 
+Agent.prototype.calcDropDistance = function(){
+    return Math.floor(this.seedWeight * settings.wheat.maxDropDistance) + 1;
+}
+
+Agent.prototype.calcSeedDrop = function(){
+    return 2;
+}
+
+Agent.prototype.calcReproductionAge = function(){
+    return settings.wheat.baseReproductionAge * this.seedWeight;
+}
+
 Agent.prototype.update = function () {
-    var SEEDDROP = 2;
     var cell = this.game.board.board[this.x][this.y];
-    var dropDistance = Math.floor(this.seedWeight * 6) + 1;
     var seedHardiness = this.seedWeight * this.seedWeight;
-    var reproductionAge = 15 * this.seedWeight;
 
     if(this.isSeed){
         if(cell.water > 0 && (Math.random() > 0.02 * cell.population * cell.population)){
             this.isSeed = false;
             cell.population++;
             cell.water -= 1;
-            //Log genetics
-            // if(Math.random() < .0001){
-            //     console.log(this.seedWeight);
-            // }
             this.game.statistics.wheatTypeCount[this.geneticType]++;
         }
         else if(Math.random() < seedHardiness){
@@ -100,12 +111,12 @@ Agent.prototype.update = function () {
         this.age++;
         cell.water -= 1;
         // did I die?
-        if (Math.random() < 0.02 * cell.population * cell.population && this.age > reproductionAge) {
+        if (Math.random() < 0.02 * cell.population * cell.population && this.age > this.reproductionAge) {
             this.dead = true;
             cell.population -= 1;
-            for(var i = 0; i < SEEDDROP; i++){
-                var newX = Math.floor((this.x + randomInt(dropDistance) - (dropDistance / 2) + this.game.board.dimension) % this.game.board.dimension);
-                var newY = Math.floor((this.y + randomInt(dropDistance) - (dropDistance / 2) + this.game.board.dimension) % this.game.board.dimension);
+            for(var i = 0; i < this.numOfSeeds; i++){
+                var newX = Math.floor((this.x + randomInt(this.dropDistance) - (this.dropDistance / 2) + this.game.board.dimension) % this.game.board.dimension);
+                var newY = Math.floor((this.y + randomInt(this.dropDistance) - (this.dropDistance / 2) + this.game.board.dimension) % this.game.board.dimension);
                 if(newX < 100 && newY < 100 && newX >= 0 && newY >= 0){
                     var newCell = this.game.board.board[newX][newY];
                     if(newCell.seedCount * newCell.seedCount * .02 < Math.random() && !newCell.isRiver){
@@ -144,26 +155,25 @@ Cell.prototype = new Entity();
 Cell.prototype.constructor = Cell;
 
 Cell.prototype.update = function () {
-    MAX_WATER = 20; //TO_DO
+    maxWater = settings.maxWater; //TO_DO
     /*
     This should replenish or deplete resources as necessary on each turn update. Resource determining factors will all be under gameControll object
     */
-   if(this.waterDistance > 0 && this.water < MAX_WATER){
+   if(this.waterDistance > 0 && this.water < maxWater){
+        var waterDistance = settings.floodDistance;
         if(this.game.gameController.floodSeason){
             //Replenish during flood season. Should double water and have water table extend to a further range as determined by a cells 
             //riverdistance
-            var WATER_DISTANCE = 11//this.game.gameController.riverReach;//TODO
-            if(this.waterDistance < WATER_DISTANCE){
-                this.water += (WATER_DISTANCE - this.waterDistance);
-                this.water = Math.min(this.water, MAX_WATER);
+            if(this.waterDistance < waterDistance){
+                this.water += (waterDistance - this.waterDistance);
+                this.water = Math.min(this.water, maxWater);
             }
         } else {
             //Standard replenishment. Note that the rate of flooding is determined in the gameengine update function.
-            var WATER_DISTANCE = 11//this.game.gameController.riverReach; //TODO
-            WATER_DISTANCE = Math.floor(WATER_DISTANCE / 2);
-            if(this.waterDistance < WATER_DISTANCE){
-                this.water += (WATER_DISTANCE - this.waterDistance);
-                this.water = Math.min(this.water, MAX_WATER);
+            waterDistance = Math.floor(waterDistance / 2);
+            if(this.waterDistance < waterDistance){
+                this.water += (waterDistance - this.waterDistance);
+                this.water = Math.min(this.water, maxWater);
             }
         }
     }
@@ -171,7 +181,7 @@ Cell.prototype.update = function () {
 
 /*
 Binary search is better but when the array is of length 3 this works. As we add more genetic factors and try to speciate more we will
-Have to implement better solutions.
+Have to implement better solutions. We will pull this code out into the genetics class.
 */
 function placeWheatInBucket(game, wheatValue){
     var placement = 0;
@@ -220,18 +230,18 @@ function Automata(game) {
             this.board[currentRiverTilesInRow[placement]][i].isRiver = true;
             this.board[currentRiverTilesInRow[placement]][i].color = "Blue";
             allRiverTiles.push([currentRiverTilesInRow[placement], i]);
-            for(var addingWater = 1; addingWater < 11; addingWater++){
+            for(var addingWater = 1; addingWater < settings.floodDistance; addingWater++){
                 var left = this.board[currentRiverTilesInRow[placement] - addingWater][i]
                 var right = this.board[currentRiverTilesInRow[placement] + addingWater][i]
                 if(left && !left.isRiver){
-                    if(addingWater < 11){
-                        left.water += 11 - addingWater;
+                    if(addingWater < settings.floodDistance){
+                        left.water += settings.floodDistance - addingWater;
                     } 
                     left.waterDistance = Math.min(addingWater, addingWater);
                 }
                 if(right && !right.isRiver){
-                    if(addingWater < 11){
-                        right.water += 11 - addingWater;
+                    if(addingWater < settings.floodDistance){
+                        right.water += settings.floodDistance - addingWater;
                     } 
 
                     right.waterDistance = addingWater;
@@ -315,7 +325,7 @@ Automata.prototype.update = function () {
 };
 
 Automata.prototype.draw_graph = function (ctx, baseX, baseY, proportions, proportionColors){
-    var width = 8;
+    width = settings.drawingWidth;
     ctx.fillStyle = "White";
     ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
     if(proportionColors.length != proportions.length){
@@ -334,7 +344,7 @@ Automata.prototype.draw_graph = function (ctx, baseX, baseY, proportions, propor
 }
 
 Automata.prototype.draw = function (ctx) {
-    var size = 8;
+    var size = settings.drawingWidth;
     for (var i = 0; i < this.dimension; i++) {
         for (var j = 0; j < this.dimension; j++) {
             var cell = this.board[i][j];
@@ -363,13 +373,11 @@ Automata.prototype.draw = function (ctx) {
     
 
 
-    //TODO change
     var wheatProportions = [0, 0, 0];
-    var wheatColors = ["Black", "Grey", "Yellow"];
     for( var i = 0; i < this.agents.length; i++){
         wheatProportions[this.agents[i].geneticType]++;
     }
-    this.draw_graph(graphCtx, 0, 0, wheatProportions, wheatColors);
+    this.draw_graph(graphCtx, 0, 0, wheatProportions, settings.wheat.wheatColors);
 };
 
 function add(a, b) {
@@ -390,8 +398,7 @@ ASSET_MANAGER.downloadAll(function () {
     var canvas = document.getElementById('gameWorld');
     var ctx = canvas.getContext('2d');
     graphCtx = document.getElementById('graphWorld').getContext('2d');
-
-
+    
     var gameEngine = new GameEngine();
     var automata = new Automata(gameEngine);
     gameEngine.addEntity(automata);
