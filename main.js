@@ -57,9 +57,11 @@ Animal.prototype.mutate = function(animal) {
 function Animal(game, x, y, animal){
     this.color = "Magenta";
     this.age = 0;
-    //this.genome = mutate(animal)
+    //this.genome = mutate(animal.genome)
     this.hydration = 1;
     this.fullness = 1;
+    this.x = x;
+    this.y = y;
     this.isDead = false;
 
     Entity.call(this, game, x, y);
@@ -71,9 +73,7 @@ Animal.prototype.update = function(){
 }
 
 var Herbivore = function(game, x, y, Herbivore){
-    Animal.call(this);
-    this.x = x;
-    this.y = y;
+    Animal.call(this, game, x, y);
     this.color = "Purple";
 }   
 
@@ -273,9 +273,11 @@ function Automata(game) {
         var x = randomInt(this.dimension);
         var y = randomInt(this.dimension);
 
-        var agent = new Agent(game, x, y);
-        this.agents.push(agent);
-        this.board[x][y].population += 1;
+        if(!this.board[x][y].isRiver){
+            var agent = new Agent(game, x, y);
+            this.agents.push(agent);
+            this.board[x][y].population += 1;
+        }
     }
 
     // add agents
