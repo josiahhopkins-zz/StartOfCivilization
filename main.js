@@ -1,4 +1,11 @@
 var graphCtx = null;
+
+function defaultFunction(value){
+    var bit = randomInt(2);
+    toReturn = value + Math.pow(-1, bit) * Math.random() * 0.1;
+    makeSureValueBetweenZeroAndOne(toReturn);
+}
+
 var settings = {
                 drawingWidth: 8,
                 floodDistance: 11,
@@ -28,6 +35,18 @@ function rgb(r, g, b) {
 }
 
 function Agent(game, x, y, agent) {
+    this.gene = new Genetics();
+    if(agent){
+        for(var key in agent.gene.valueMap){
+            var parentValue = agent.gene.valueMap[key];
+            if(typeof parentValue.myFunction !== 'function'){
+                console.log("Not a function");
+            }
+            this.gene.addProperty(key, parentValue.myFunction(parentValue.value), parentValue.myFunction)
+        }
+    } else {
+        this.gene.addProperty("seedWeight", .5, defaultFunction);
+    }
     if (agent) {
         var bit = randomInt(2)
         this.seedWeight = agent.seedWeight + Math.pow(-1, bit) * Math.random() * 0.1;
