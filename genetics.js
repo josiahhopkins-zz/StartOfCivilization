@@ -6,7 +6,7 @@ function Genetics(){
     }
 }
 
-function GeneticProperty(value, the_function){
+function GeneticProperty(value){
     this.value = value;
 }
 

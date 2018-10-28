@@ -3,7 +3,7 @@ var graphCtx = null;
 function defaultFunction(value){
     var bit = randomInt(2);
     toReturn = value + Math.pow(-1, bit) * Math.random() * 0.1;
-    makeSureValueBetweenZeroAndOne(toReturn);
+    return makeSureValueBetweenZeroAndOne(toReturn);
 }
 
 var settings = {
