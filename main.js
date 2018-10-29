@@ -6,7 +6,8 @@ function defaultFunction(value){
     return makeSureValueBetweenZeroAndOne(toReturn);
 }
 
-var settings = {
+var settings = {    
+                boardSize: 100,
                 drawingWidth: 8,
                 floodDistance: 11,
                 maxWater: 20,
@@ -39,9 +40,6 @@ function Agent(game, x, y, agent) {
     if(agent){
         for(var key in agent.gene.valueMap){
             var parentValue = agent.gene.valueMap[key];
-            if(typeof parentValue.myFunction !== 'function'){
-                console.log("Not a function");
-            }
             this.gene.addProperty(key, parentValue.myFunction(parentValue.value), parentValue.myFunction)
         }
     } else {
@@ -74,6 +72,18 @@ Animal.prototype.mutate = function(animal) {
     return animal.genome;
 }
 function Animal(game, x, y, animal){
+    this.gene = new Genetics();
+    if(animal){
+        for(var key in animal.gene.valueMap){
+            var parentValue = animal.gene.valueMap[key];
+            if(typeof parentValue.myFunction !== 'function'){
+                console.log("Not a function");
+            }
+            this.gene.addProperty(key, parentValue.myFunction(parentValue.value), parentValue.myFunction)
+        }
+    } else {
+        this.gene.addProperty("unexpressedGene", .5, defaultFunction);
+    }
     this.color = "Magenta";
     this.age = 0;
     //this.genome = mutate(animal.genome)
@@ -87,14 +97,39 @@ function Animal(game, x, y, animal){
 }
 
 Animal.prototype = new Entity();
-Animal.prototype.update = function(){
-
-}
 
 var Herbivore = function(game, x, y, Herbivore){
     Animal.call(this, game, x, y);
     this.color = "Purple";
 }   
+
+Herbivore.prototype.update = function(){
+    var newLocation = this.chooseMove();
+    this.nextX = newLocation.x;
+    this.nextY = newLocation.y;
+}
+
+Herbivore.prototype.move = function(){
+    this.x = this.nextX;
+    this.y = this.nextY;
+}
+
+Herbivore.prototype.chooseMove = function(){
+    var changeX = randomInt(3) - 1;
+    var changeY = randomInt(3) - 1;
+    var toReturn = {};
+    toReturn.x = this.x + changeX;
+    toReturn.y = this.y + changeY;
+    if(toReturn.x < 0 || toReturn.x >= settings.dimension){
+        toReturn.x = this.x;
+    }
+    if(toReturn.y < 0 || toReturn.y >= settings.dimension){
+        toReturn.y = this.y;
+    } 
+    return toReturn;
+}
+
+
 
 
 Agent.prototype = new Entity();
@@ -231,6 +266,7 @@ function Automata(game) {
     game.statistics.wheatTypes = [.3, .7, 1];
     game.statistics.wheatTypeCount = [0, 0, 0];
 
+
     // create board
     this.board = [];
     for (var i = 0; i < this.dimension; i++) {
@@ -316,11 +352,15 @@ Automata.prototype = new Entity();
 Automata.prototype.constructor = Automata;
 
 Automata.prototype.update = function () {
-    for (var i = 0; i < this.agents.length; i++) {
-        this.agents[i].update();
+    for (var i = 0; i < this.animals.length; i++) {
+        this.animals[i].update();
+    }
+    for (var i = 0; i < this.animals.length; i++) {
+        this.animals[i].move();
     }
 
     for (var i = this.agents.length - 1; i >= 0; i--) {
+        this.agents[i].update();
         if (this.agents[i].dead) {
             this.agents.splice(i, 1);
         }
