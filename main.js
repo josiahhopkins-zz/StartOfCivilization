@@ -91,7 +91,7 @@ function Animal(game, x, y, animal){
     this.fullness = 1;
     this.x = x;
     this.y = y;
-    this.isDead = false;
+    this.dead = false;
 
     Entity.call(this, game, x, y);
 }
@@ -101,12 +101,19 @@ Animal.prototype = new Entity();
 var Herbivore = function(game, x, y, Herbivore){
     Animal.call(this, game, x, y);
     this.color = "Purple";
+    this.calories = 4000;
 }   
 
 Herbivore.prototype.update = function(){
+    this.game.board.board[this.x][this.y].animalPopulation.herbivores.add(this);
     var newLocation = this.chooseMove();
     this.nextX = newLocation.x;
     this.nextY = newLocation.y;
+    this.calories = Math.min(4000, this.calories - 400);
+    this.dead = this.dead || this.calories < 0;
+    if(this.dead){
+        this.game.board.board[this.x][this.y].wheat.delete(this);
+    }
 }
 
 Herbivore.prototype.move = function(){
@@ -120,10 +127,10 @@ Herbivore.prototype.chooseMove = function(){
     var toReturn = {};
     toReturn.x = this.x + changeX;
     toReturn.y = this.y + changeY;
-    if(toReturn.x < 0 || toReturn.x >= settings.dimension){
+    if(toReturn.x < 0 || toReturn.x >= settings.boardSize){
         toReturn.x = this.x;
     }
-    if(toReturn.y < 0 || toReturn.y >= settings.dimension){
+    if(toReturn.y < 0 || toReturn.y >= settings.boardSize){
         toReturn.y = this.y;
     } 
     return toReturn;
@@ -156,6 +163,7 @@ Agent.prototype.update = function () {
             this.isSeed = false;
             cell.population++;
             cell.water -= 1;
+            this.game.board.board[this.x][this.y].wheat.add(this);
             this.game.statistics.wheatTypeCount[this.geneticType]++;
         }
         else if(Math.random() < seedHardiness){
@@ -188,6 +196,9 @@ Agent.prototype.update = function () {
             removeWheatInBucket(this.game, this.seedWeight);
         }
     }
+    if(!this.isSeed && this.dead){
+        this.game.board.board[this.x][this.y].wheat.delete(this);
+    }
 }
 
 function Cell(game,x,y) {
@@ -201,6 +212,10 @@ function Cell(game,x,y) {
     this.seedCount = 0;
 
     this.population = 0;
+    this.wheat = new Set();
+    this.animalPopulation = {};
+    this.animalPopulation.herbivores = new Set();
+    
 
     this.color = "Grey";
 }
@@ -209,7 +224,8 @@ Cell.prototype = new Entity();
 Cell.prototype.constructor = Cell;
 
 Cell.prototype.update = function () {
-    maxWater = settings.maxWater; //TO_DO
+
+    maxWater = settings.maxWater; 
     /*
     This should replenish or deplete resources as necessary on each turn update. Resource determining factors will all be under gameControll object
     */
@@ -231,6 +247,8 @@ Cell.prototype.update = function () {
             }
         }
     }
+
+    //updateScent(this.scent);
 }
 
 /*
@@ -355,8 +373,11 @@ Automata.prototype.update = function () {
     for (var i = 0; i < this.animals.length; i++) {
         this.animals[i].update();
     }
-    for (var i = 0; i < this.animals.length; i++) {
+    for (var i = this.animals.length - 1; i >= 0; i--) {
         this.animals[i].move();
+        if(this.animals[i].dead){
+            this.animals.splice(i, 1);
+        }
     }
 
     for (var i = this.agents.length - 1; i >= 0; i--) {
