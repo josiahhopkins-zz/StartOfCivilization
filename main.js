@@ -251,6 +251,30 @@ Cell.prototype.update = function () {
     //updateScent(this.scent);
 }
 
+Cell.prototype.getContents = function(){
+    var toReturn = {};
+    toReturn.wheat = this.wheat;
+    toReturn.herbivores = this.herbivores;
+    return toReturn;
+}
+
+function getCurrentAndAdjacent (x, y){
+    var toReturn = [];
+    for(var i = -1; i < 2; i ++){
+        var currentX = i + x;
+        if(currentX >= 0 && currentX < settings.boardSize){
+            for(var j = -1; j < 2; j++){
+                var currentY = j + y;
+                if(currentY >= 0 && currentY < settings.boardSize){
+                    var toAdd = {x: currentX, y: currentY};
+                    toReturn.push(toAdd);
+                }
+            }
+        }
+    }
+    return toReturn;
+}
+
 /*
 Binary search is better but when the array is of length 3 this works. As we add more genetic factors and try to speciate more we will
 Have to implement better solutions. We will pull this code out into the genetics class.
@@ -402,8 +426,9 @@ Automata.prototype.update = function () {
             this.board[i][j].update();
         }
     }
-    console.log(this.game.gameController.floodSeason);
-    console.log(this.game.statistics.wheatTypeCount);
+    // console.log(this.game.gameController.floodSeason);
+    // console.log(this.game.statistics.wheatTypeCount);
+    console.log(getCurrentAndAdjacent(5, 7));
 };
 
 Automata.prototype.draw_graph = function (ctx, baseX, baseY, proportions, proportionColors){
