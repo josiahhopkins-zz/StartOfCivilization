@@ -60,6 +60,7 @@ function Agent(game, x, y, agent) {
     this.age = 0;
     this.color = rgb(val,val,val);
     this.geneticType = placeWheatInBucket(game, this.seedWeight);
+    this.calories = 400;
 
     this.dropDistance = this.calcDropDistance();
     this.numOfSeeds = this.calcSeedDrop();
@@ -109,7 +110,7 @@ Herbivore.prototype.update = function(){
     var newLocation = this.chooseMove();
     this.nextX = newLocation.x;
     this.nextY = newLocation.y;
-    this.calories = Math.min(4000, this.calories - 400);
+    this.calories = Math.min(4000, this.calories - 4);
     this.dead = this.dead || this.calories < 0;
     if(this.dead){
         this.game.board.board[this.x][this.y].wheat.delete(this);
@@ -134,6 +135,17 @@ Herbivore.prototype.chooseMove = function(){
         toReturn.y = this.y;
     } 
     return toReturn;
+}
+
+Herbivore.prototype.postMoveAction = function(){
+    var currentCell = this.game.board.board[this.x][this.y];
+    var availableWheat = currentCell.wheat;
+    if(availableWheat.size > 0){
+        var toEat = availableWheat.values().next().value;
+        availableWheat.delete(toEat);
+        this.calories += toEat.calories;
+        toEat.spread();
+    }
 }
 
 
@@ -174,20 +186,7 @@ Agent.prototype.update = function () {
         cell.water -= 1;
         // did I die?
         if (Math.random() < 0.02 * cell.population * cell.population && this.age > this.reproductionAge) {
-            this.dead = true;
-            cell.population -= 1;
-            for(var i = 0; i < this.numOfSeeds; i++){
-                var newX = Math.floor((this.x + randomInt(this.dropDistance) - (this.dropDistance / 2) + this.game.board.dimension) % this.game.board.dimension);
-                var newY = Math.floor((this.y + randomInt(this.dropDistance) - (this.dropDistance / 2) + this.game.board.dimension) % this.game.board.dimension);
-                if(newX < 100 && newY < 100 && newX >= 0 && newY >= 0){
-                    var newCell = this.game.board.board[newX][newY];
-                    if(newCell.seedCount * newCell.seedCount * .02 < Math.random() && !newCell.isRiver){
-                        var agent = new Agent(this.game, newX, newY, this);
-                        this.game.babies.push(agent); 
-                    }
-                }
-            }
-            removeWheatInBucket(this.game, this.seedWeight);
+            this.spread();
         } 
         //Dying of thirst prevents reproduction
         else if (cell.water < 1){
@@ -199,6 +198,23 @@ Agent.prototype.update = function () {
     if(!this.isSeed && this.dead){
         this.game.board.board[this.x][this.y].wheat.delete(this);
     }
+}
+
+Agent.prototype.spread = function(){
+    this.dead = true;
+    this.game.board.board[this.x][this.y].population -= 1;
+    for(var i = 0; i < this.numOfSeeds; i++){
+        var newX = Math.floor((this.x + randomInt(this.dropDistance) - (this.dropDistance / 2) + this.game.board.dimension) % this.game.board.dimension);
+        var newY = Math.floor((this.y + randomInt(this.dropDistance) - (this.dropDistance / 2) + this.game.board.dimension) % this.game.board.dimension);
+        if(newX < 100 && newY < 100 && newX >= 0 && newY >= 0){
+            var newCell = this.game.board.board[newX][newY];
+            if(newCell.seedCount * newCell.seedCount * .02 < Math.random() && !newCell.isRiver){
+                var agent = new Agent(this.game, newX, newY, this);
+                this.game.babies.push(agent); 
+            }
+        }
+    }
+    removeWheatInBucket(this.game, this.seedWeight);
 }
 
 function Cell(game,x,y) {
@@ -402,6 +418,9 @@ Automata.prototype.update = function () {
         if(this.animals[i].dead){
             this.animals.splice(i, 1);
         }
+    }
+    for (var i = 0; i < this.animals.length; i++) {
+        this.animals[i].postMoveAction();
     }
 
     for (var i = this.agents.length - 1; i >= 0; i--) {
