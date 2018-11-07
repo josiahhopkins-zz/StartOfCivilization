@@ -100,6 +100,8 @@ function Animal(game, x, y, animal){
 Animal.prototype = new Entity();
 
 var Herbivore = function(game, x, y, Herbivore){
+   
+
     Animal.call(this, game, x, y);
     this.color = "Purple";
     this.calories = 4000;
@@ -110,10 +112,15 @@ Herbivore.prototype.update = function(){
     var newLocation = this.chooseMove();
     this.nextX = newLocation.x;
     this.nextY = newLocation.y;
-    this.calories = Math.min(4000, this.calories - 4);
+    this.calories = Math.min(4000, this.calories - 40);
     this.dead = this.dead || this.calories < 0;
     if(this.dead){
         this.game.board.board[this.x][this.y].wheat.delete(this);
+    } else {
+        if(Math.random() < 0.02){
+            var theChild = new Herbivore(this.game, this.x, this.y, this);
+            this.game.babyAnimals.push(theChild);
+        }
     }
 }
 
@@ -123,6 +130,24 @@ Herbivore.prototype.move = function(){
 }
 
 Herbivore.prototype.chooseMove = function(){
+    var myBoard = this.game.board.board;
+    myBoard[this.x][this.y].population -= 1; //SUPER HACKY
+    var possibleCells = getCurrentAndAdjacent(this.x, this.y);
+    var starter = randomInt(possibleCells.length);
+    var best = possibleCells[starter];
+    possibleCells.splice(starter, 1);
+    for(var coordinateSet = 1; coordinateSet < possibleCells.length; coordinateSet++){
+        if(myBoard[best.x][best.y].wheat.size < myBoard[possibleCells[coordinateSet].x][possibleCells[coordinateSet].y].wheat.size){
+            best = possibleCells[coordinateSet];
+        } else if(myBoard[best.x][best.y].wheat.size == myBoard[possibleCells[coordinateSet].x][possibleCells[coordinateSet].y].wheat.size &&
+            myBoard[best.x][best.y].animalPopulation.herbivores.size < myBoard[possibleCells[coordinateSet].x][possibleCells[coordinateSet].y].animalPopulation.herbivores.size){
+                best = possibleCells[coordinateSet];
+        }
+    }
+    
+    myBoard[this.x][this.y].population += 1; //SUPER HACKY
+    return best;
+    /*
     var changeX = randomInt(3) - 1;
     var changeY = randomInt(3) - 1;
     var toReturn = {};
@@ -135,6 +160,7 @@ Herbivore.prototype.chooseMove = function(){
         toReturn.y = this.y;
     } 
     return toReturn;
+    */
 }
 
 Herbivore.prototype.postMoveAction = function(){
@@ -320,6 +346,7 @@ function Automata(game) {
     this.agents = [];
     game.babies = [];
     this.animals =[];
+    game.babyAnimals = [];
     game.statistics = {};
     game.statistics.wheatTypes = [.3, .7, 1];
     game.statistics.wheatTypeCount = [0, 0, 0];
@@ -389,10 +416,10 @@ function Automata(game) {
         if(!this.board[x][y].isRiver){
             var agent = new Agent(game, x, y);
             this.agents.push(agent);
-            this.board[x][y].population += 1;
         }
     }
 
+    /*
     // add agents
     while (this.animals.length < this.animalPopulationSize) {
         var x = randomInt(this.dimension);
@@ -401,7 +428,7 @@ function Automata(game) {
         var animal = new Herbivore(game, x, y);
         this.animals.push(animal);
     }
-    
+    */
 
     Entity.call(this, game, 0, 0);
 };
@@ -433,6 +460,10 @@ Automata.prototype.update = function () {
         this.agents.push(this.game.babies.pop());
     }
     this.game.babies = [];
+    for (var i = this.game.babyAnimals.length - 1; i >= 0; i--){
+        this.animals.push(this.game.babyAnimals.pop());
+    }
+    this.game.babyAnimals = [];
 
     //while (this.agents.length < this.populationSize) {
     //    var parent = this.agents[randomInt(this.agents.length)];
@@ -447,7 +478,6 @@ Automata.prototype.update = function () {
     }
     // console.log(this.game.gameController.floodSeason);
     // console.log(this.game.statistics.wheatTypeCount);
-    console.log(getCurrentAndAdjacent(5, 7));
 };
 
 Automata.prototype.draw_graph = function (ctx, baseX, baseY, proportions, proportionColors){
