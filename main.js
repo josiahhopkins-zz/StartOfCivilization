@@ -115,7 +115,7 @@ Herbivore.prototype.update = function(){
     this.calories = Math.min(4000, this.calories - 40);
     this.dead = this.dead || this.calories < 0;
     if(this.dead){
-        this.game.board.board[this.x][this.y].wheat.delete(this);
+        this.game.board.board[this.x][this.y].animalPopulation.herbivores.delete(this);
     } else {
         if(Math.random() < 0.02){
             var theChild = new Herbivore(this.game, this.x, this.y, this);
@@ -206,6 +206,7 @@ Agent.prototype.update = function () {
         }
         else if(Math.random() < seedHardiness){
             this.dead = true;
+            this.game.board.board[this.x][this.y].wheat.delete(this);
         }
     } else{
         this.age++;
@@ -419,7 +420,6 @@ function Automata(game) {
         }
     }
 
-    /*
     // add agents
     while (this.animals.length < this.animalPopulationSize) {
         var x = randomInt(this.dimension);
@@ -428,7 +428,7 @@ function Automata(game) {
         var animal = new Herbivore(game, x, y);
         this.animals.push(animal);
     }
-    */
+    
 
     Entity.call(this, game, 0, 0);
 };
