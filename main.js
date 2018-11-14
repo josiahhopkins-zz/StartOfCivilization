@@ -108,15 +108,17 @@ var Herbivore = function(game, x, y, Herbivore){
 }   
 
 Herbivore.prototype.update = function(){
-    this.game.board.board[this.x][this.y].animalPopulation.herbivores.add(this);
+    if(!this.game.board.board[this.x][this.y].animalPopulation.herbivores.has(this)){
+        this.game.board.board[this.x][this.y].animalPopulation.herbivores.add(this);
+    }
     var newLocation = this.chooseMove();
     this.nextX = newLocation.x;
     this.nextY = newLocation.y;
-    this.calories = Math.min(4000, this.calories - 40);
+    this.calories = Math.min(4000, this.calories - 350);
     this.dead = this.dead || this.calories < 0;
     if(this.dead){
         this.game.board.board[this.x][this.y].animalPopulation.herbivores.delete(this);
-    } else {
+    } else {//if(this.calories == 4000) {
         if(Math.random() < 0.02){
             var theChild = new Herbivore(this.game, this.x, this.y, this);
             this.game.babyAnimals.push(theChild);
@@ -342,7 +344,7 @@ function removeWheatInBucket(game, wheatValue){
 function Automata(game) {
     var SPLITCHANCE = .01;
     this.dimension = 100;
-    this.populationSize = 100;
+    this.populationSize = 1000;
     this.animalPopulationSize = 50;
     this.agents = [];
     game.babies = [];
@@ -504,6 +506,8 @@ Automata.prototype.draw = function (ctx) {
     for (var i = 0; i < this.dimension; i++) {
         for (var j = 0; j < this.dimension; j++) {
             var cell = this.board[i][j];
+
+            console.log(cell.population);
             
             color = rgb(Math.min(cell.population * 80),Math.min(cell.population * 80), 0);
             if(this.seedWeight < .25){
