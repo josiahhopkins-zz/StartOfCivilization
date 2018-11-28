@@ -127,8 +127,10 @@ Herbivore.prototype.update = function(){
 }
 
 Herbivore.prototype.move = function(){
+    this.game.board.board[this.x][this.y].animalPopulation.herbivores.delete(this);
     this.x = this.nextX;
     this.y = this.nextY;
+    this.game.board.board[this.x][this.y].animalPopulation.herbivores.add(this);
 }
 
 Herbivore.prototype.chooseMove = function(){
@@ -199,9 +201,8 @@ Agent.prototype.update = function () {
     var seedHardiness = this.seedWeight * this.seedWeight;
 
     if(this.isSeed){
-        if(cell.water > 0 && (Math.random() > 0.02 * cell.population * cell.population)){
+        if(cell.water > 0 && (Math.random() > 0.02 * cell.wheat.size * cell.wheat.size)){
             this.isSeed = false;
-            cell.population++;
             cell.water -= 1;
             this.game.board.board[this.x][this.y].wheat.add(this);
             this.game.statistics.wheatTypeCount[this.geneticType]++;
@@ -214,13 +215,12 @@ Agent.prototype.update = function () {
         this.age++;
         cell.water -= 1;
         // did I die?
-        if (Math.random() < 0.02 * cell.population * cell.population && this.age > this.reproductionAge) {
+        if (Math.random() < 0.02 * cell.wheat.size * cell.wheat.size && this.age > this.reproductionAge) {
             this.spread();
         } 
         //Dying of thirst prevents reproduction
         else if (cell.water < 1){
             this.dead = true; 
-            cell.population -= 1;
             removeWheatInBucket(this.game, this.seedWeight);
         }
     }
@@ -265,6 +265,22 @@ function Cell(game,x,y) {
     this.color = "Grey";
 }
 
+Cell.prototype.addWheat = function(theWheat){
+
+}
+
+Cell.prototype.removeWheat = function(theWheat){
+
+}
+
+Cell.prototype.addAnimal = function(theAnimal){
+    
+}
+
+Cell.prototype.removeAnimal = function(theAnimal){
+    
+}
+
 Cell.prototype = new Entity();
 Cell.prototype.constructor = Cell;
 
@@ -294,6 +310,13 @@ Cell.prototype.update = function () {
     }
 
     //updateScent(this.scent);
+}
+
+Cell.prototype.printStats = function(){
+    console.log("Water = " + this.water);
+    console.log("Herbivore size  = " + this.animalPopulation.herbivores.size);
+    console.log("Wheat = " + this.wheat.size);
+    console.log("x = " + this.x + " y = " + this.y);
 }
 
 Cell.prototype.getContents = function(){
@@ -376,18 +399,23 @@ function Automata(game) {
             for(var addingWater = 1; addingWater < settings.floodDistance; addingWater++){
                 var left = this.board[currentRiverTilesInRow[placement] - addingWater][i]
                 var right = this.board[currentRiverTilesInRow[placement] + addingWater][i]
+                var waterLevelForDistance = settings.floodDistance - addingWater;
                 if(left && !left.isRiver){
                     if(addingWater < settings.floodDistance){
-                        left.water += settings.floodDistance - addingWater;
+                        left.water += waterLevelForDistance;
                     } 
                     left.waterDistance = Math.min(addingWater, addingWater);
+                    //left.color = "Orange";
+                    //console.log("Added " + left.water + " To orange");
                 }
                 if(right && !right.isRiver){
                     if(addingWater < settings.floodDistance){
-                        right.water += settings.floodDistance - addingWater;
+                        right.water += waterLevelForDistance;
                     } 
 
                     right.waterDistance = addingWater;
+                    //right.color = "Green";
+                    //console.log("Added " + right.water + " To green");
                 }
             }
 
@@ -431,7 +459,7 @@ function Automata(game) {
         this.animals.push(animal);
     }
     
-
+    
     Entity.call(this, game, 0, 0);
 };
 
@@ -506,16 +534,10 @@ Automata.prototype.draw = function (ctx) {
     for (var i = 0; i < this.dimension; i++) {
         for (var j = 0; j < this.dimension; j++) {
             var cell = this.board[i][j];
-
-            console.log(cell.population);
+            //console.log(cell.wheat.size);
             
-            color = rgb(Math.min(cell.population * 80),Math.min(cell.population * 80), 0);
-            if(this.seedWeight < .25){
-                color = "Orange";
-            } else if( this.seedWeight > .75){
-                color = "Green";
-            }
-            if(cell.population === 0){
+            color = rgb(Math.min(cell.wheat.size * 80),Math.min(cell.wheat.size * 80), 0);
+            if(cell.wheat.size === 0){
                 color = cell.color;
             }
             ctx.fillStyle = color;
@@ -523,7 +545,7 @@ Automata.prototype.draw = function (ctx) {
         }
     }
 
-    
+    //console.log(this.animals.length);
     for (var i = 0; i < this.animals.length; i++) {
         ctx.fillStyle = this.animals[i].color;
         ctx.beginPath();
