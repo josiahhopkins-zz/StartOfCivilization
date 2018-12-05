@@ -35,40 +35,6 @@ function rgb(r, g, b) {
     return "rgb(" + r + "," + g + "," + b + ")";
 }
 
-function Agent(game, x, y, agent) {
-    this.gene = new Genetics();
-    if(agent){
-        for(var key in agent.gene.valueMap){
-            var parentValue = agent.gene.valueMap[key];
-            this.gene.addProperty(key, parentValue.myFunction(parentValue.value), parentValue.myFunction)
-        }
-    } else {
-        this.gene.addProperty("seedWeight", .5, defaultFunction);
-    }
-    if (agent) {
-        var bit = randomInt(2)
-        this.seedWeight = agent.seedWeight + Math.pow(-1, bit) * Math.random() * 0.1;
-        if (this.seedWeight < 0) this.seedWeight = 0;
-        if (this.seedWeight > 1) this.seedWeight = 1;
-    }
-    else {
-        this.seedWeight = 0.5;
-    }
-
-    var val = Math.floor(256 * this.seedWeight);
-    this.isSeed = true;
-    this.age = 0;
-    this.color = rgb(val,val,val);
-    this.geneticType = placeWheatInBucket(game, this.seedWeight);
-    this.calories = 400;
-
-    this.dropDistance = this.calcDropDistance();
-    this.numOfSeeds = this.calcSeedDrop();
-    this.reproductionAge = this.calcReproductionAge();
-    this.maxAge = settings.wheat.MaxAge;
-
-    Entity.call(this, game, x, y);
-}
 Animal.prototype.mutate = function(animal) {
     return animal.genome;
 }
@@ -93,11 +59,103 @@ function Animal(game, x, y, animal){
     this.x = x;
     this.y = y;
     this.dead = false;
+    this.calories = 2000;
 
     Entity.call(this, game, x, y);
 }
 
 Animal.prototype = new Entity();
+
+var Carnivore = function(game, x, y, Herbivore){
+   
+
+    Animal.call(this, game, x, y);
+    this.color = "Orange";
+    this.calories = 16000;
+}   
+
+
+Carnivore.prototype.update = function(){
+    if(!this.game.board.board[this.x][this.y].animalPopulation.carnivores.has(this)){
+        this.game.board.board[this.x][this.y].animalPopulation.carnivores.add(this);
+    }
+    var newLocation = this.chooseMove();
+    this.nextX = newLocation.x;
+    this.nextY = newLocation.y;
+    this.calories = Math.min(16000, this.calories - 350);
+    this.dead = this.dead || this.calories < 0;
+    if(this.dead){
+        this.game.board.board[this.x][this.y].animalPopulation.carnivores.delete(this);
+    } else {//if(this.calories == 4000) {
+        if(Math.random() < 0.02){
+            var theChild = new Carnivore(this.game, this.x, this.y, this);
+            this.game.babyAnimals.push(theChild);
+        }
+    }
+}
+
+Carnivore.prototype.move = function(){
+    this.game.board.board[this.x][this.y].animalPopulation.carnivores.delete(this);
+    this.x = this.nextX;
+    this.y = this.nextY;
+    this.game.board.board[this.x][this.y].animalPopulation.carnivores.add(this);
+}
+
+Carnivore.prototype.chooseMove = function(){
+    var myBoard = this.game.board.board;
+    myBoard[this.x][this.y].animalPopulation.carnivores.delete(this); //SUPER HACKY
+    var possibleCells = getCurrentAndAdjacent(this.x, this.y);
+    var starter = randomInt(possibleCells.length);
+    var best = possibleCells[starter];
+    possibleCells.splice(starter, 1);
+    var ties = [];
+    for(var coordinateSet = 1; coordinateSet < possibleCells.length; coordinateSet++){
+        if(myBoard[best.x][best.y].animalPopulation.herbivores.size < myBoard[possibleCells[coordinateSet].x][possibleCells[coordinateSet].y].animalPopulation.herbivores.size){
+            best = possibleCells[coordinateSet];
+            ties = [];
+        } else if(myBoard[best.x][best.y].animalPopulation.herbivores.size == myBoard[possibleCells[coordinateSet].x][possibleCells[coordinateSet].y].animalPopulation.herbivores.size &&
+            myBoard[best.x][best.y].animalPopulation.carnivores.size < myBoard[possibleCells[coordinateSet].x][possibleCells[coordinateSet].y].animalPopulation.carnivores.size){
+                best = possibleCells[coordinateSet];
+                ties = [];
+        } else if (randomInt(2) == 0 && myBoard[best.x][best.y].animalPopulation.herbivores.size == myBoard[possibleCells[coordinateSet].x][possibleCells[coordinateSet].y].animalPopulation.herbivores.size &&
+            myBoard[best.x][best.y].animalPopulation.carnivores.size == myBoard[possibleCells[coordinateSet].x][possibleCells[coordinateSet].y].animalPopulation.carnivores.size){
+                ties.push(possibleCells[coordinateSet]);
+            }
+        if(ties.length > 0){
+            ties.push(best);
+            best = ties[randomInt(ties.length)];
+        }
+    }
+    
+    myBoard[this.x][this.y].animalPopulation.carnivores.add(this); //SUPER HACKY
+    return best;
+    /*
+    var changeX = randomInt(3) - 1;
+    var changeY = randomInt(3) - 1;
+    var toReturn = {};
+    toReturn.x = this.x + changeX;
+    toReturn.y = this.y + changeY;
+    if(toReturn.x < 0 || toReturn.x >= settings.boardSize){
+        toReturn.x = this.x;
+    }
+    if(toReturn.y < 0 || toReturn.y >= settings.boardSize){
+        toReturn.y = this.y;
+    } 
+    return toReturn;
+    */
+}
+
+Carnivore.prototype.postMoveAction = function(){
+    var currentCell = this.game.board.board[this.x][this.y];
+    var availableHerbivores = currentCell.animalPopulation.herbivores;
+    if(availableHerbivores.size > 0){
+        var toEat = availableHerbivores.values().next().value;
+        availableHerbivores.delete(toEat);
+        this.calories += toEat.calories;
+        toEat.dead = true;
+        console.log("Herbivore eaten");
+    }
+}
 
 var Herbivore = function(game, x, y, Herbivore){
    
@@ -119,7 +177,7 @@ Herbivore.prototype.update = function(){
     if(this.dead){
         this.game.board.board[this.x][this.y].animalPopulation.herbivores.delete(this);
     } else {//if(this.calories == 4000) {
-        if(Math.random() < 0.02){
+        if(this.calories == 4000 && Math.random() < 0.5){
             var theChild = new Herbivore(this.game, this.x, this.y, this);
             this.game.babyAnimals.push(theChild);
         }
@@ -178,7 +236,40 @@ Herbivore.prototype.postMoveAction = function(){
     }
 }
 
+function Agent(game, x, y, agent) {
+    this.gene = new Genetics();
+    if(agent){
+        for(var key in agent.gene.valueMap){
+            var parentValue = agent.gene.valueMap[key];
+            this.gene.addProperty(key, parentValue.myFunction(parentValue.value), parentValue.myFunction)
+        }
+    } else {
+        this.gene.addProperty("seedWeight", .5, defaultFunction);
+    }
+    if (agent) {
+        var bit = randomInt(2)
+        this.seedWeight = agent.seedWeight + Math.pow(-1, bit) * Math.random() * 0.1;
+        if (this.seedWeight < 0) this.seedWeight = 0;
+        if (this.seedWeight > 1) this.seedWeight = 1;
+    }
+    else {
+        this.seedWeight = 0.5;
+    }
 
+    var val = Math.floor(256 * this.seedWeight);
+    this.isSeed = true;
+    this.age = 0;
+    this.color = rgb(val,val,val);
+    this.geneticType = placeWheatInBucket(game, this.seedWeight);
+    this.calories = 1000;
+
+    this.dropDistance = this.calcDropDistance();
+    this.numOfSeeds = this.calcSeedDrop();
+    this.reproductionAge = this.calcReproductionAge();
+    this.maxAge = settings.wheat.MaxAge;
+
+    Entity.call(this, game, x, y);
+}
 
 
 Agent.prototype = new Entity();
@@ -260,8 +351,8 @@ function Cell(game,x,y) {
     this.wheat = new Set();
     this.animalPopulation = {};
     this.animalPopulation.herbivores = new Set();
+    this.animalPopulation.carnivores = new Set();
     
-
     this.color = "Grey";
 }
 
@@ -457,11 +548,19 @@ function Automata(game) {
 
         var animal = new Herbivore(game, x, y);
         this.animals.push(animal);
+
+        x = randomInt(this.dimension);
+        y = randomInt(this.dimension);
+        animal = new Carnivore(game, x, y);
+        this.animals.push(animal);
     }
     
     
     Entity.call(this, game, 0, 0);
 };
+
+
+
 
 Automata.prototype = new Entity();
 Automata.prototype.constructor = Automata;
