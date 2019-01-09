@@ -16,8 +16,17 @@ var settings = {
                     maxDropDistance: 6,
                     baseReproductionAge: 15,
                     wheatColors: ["Black", "Grey", "Yellow"]
-                }
+                },
+                herbivores: true,
+                carnivores: true,
+                humans: true
             };
+
+var stats = {
+            humans: 0,
+            wheat: 0,
+            herbivores: 0,
+            carnivores: 0};
 
 function getGameControl(game){
     var toReturn = game.gameController;
@@ -66,7 +75,7 @@ function Animal(game, x, y, animal){
 
 Animal.prototype = new Entity();
 
-var Carnivore = function(game, x, y, Herbivore){
+var Carnivore = function(game, x, y, Carnivore){
    
 
     Animal.call(this, game, x, y);
@@ -153,7 +162,106 @@ Carnivore.prototype.postMoveAction = function(){
         availableHerbivores.delete(toEat);
         this.calories += toEat.calories;
         toEat.dead = true;
-        console.log("Herbivore eaten");
+    }
+}
+
+var Human = function(game, x, y, Human){
+    Carnivore.call(this, game, x, y);
+    this.color = "Brown";
+    this.calories = 16000;
+    stats.humans++;
+}   
+
+Human.prototype.update = function(){
+    if(!this.game.board.board[this.x][this.y].animalPopulation.humans.has(this)){
+        this.game.board.board[this.x][this.y].animalPopulation.humans.add(this);
+    }
+    var newLocation = this.chooseMove();
+    this.nextX = newLocation.x;
+    this.nextY = newLocation.y;
+    this.calories = Math.min(16000, this.calories - 750);
+    this.dead = this.dead || this.calories < 0;
+    if(this.dead){
+        this.game.board.board[this.x][this.y].animalPopulation.humans.delete(this);
+        stats.humans--;
+    } else {//if(this.calories == 4000) {
+        if(Math.random() < 0.02){
+            var theChild = new Human(this.game, this.x, this.y, this);
+            this.game.babyAnimals.push(theChild);
+        }
+    }
+}
+
+Human.prototype.move = function(){
+    this.game.board.board[this.x][this.y].animalPopulation.humans.delete(this);
+    this.x = this.nextX;
+    this.y = this.nextY;
+    this.game.board.board[this.x][this.y].animalPopulation.humans.add(this);
+}
+
+function humanMovePriority(wheatCount, herbivoreCount, wolfCount, humanCount, water, calories, thirst){
+    if(wheatCount === 0 && herbivoreCount === 0){ 
+        return -10000000;
+    } else {
+        return ((wheatCount + herbivoreCount) - humanCount) * (humanCount);
+    }
+}
+
+Human.prototype.chooseMove = function(){
+    var myBoard = this.game.board.board;
+    myBoard[this.x][this.y].animalPopulation.humans.delete(this); //SUPER HACKY
+    var possibleCells = getCurrentAndAdjacent(this.x, this.y);
+    var starter = randomInt(possibleCells.length);
+    var best = possibleCells[starter];
+    var bestCell = myBoard[possibleCells[starter].x][possibleCells[starter].y];
+    var bestValue = humanMovePriority(bestCell.wheat.size, bestCell.animalPopulation.herbivores.size, bestCell.animalPopulation.carnivores.size
+                                        , bestCell.animalPopulation.humans.size, bestCell.water, this.calories, this.hydration);
+    possibleCells.splice(starter, 1);
+    var ties = [];
+    for(var coordinateSet = 1; coordinateSet < possibleCells.length; coordinateSet++){
+        var nextCell = myBoard[possibleCells[coordinateSet].x][possibleCells[coordinateSet].y];
+        var nextValue = humanMovePriority(nextCell.wheat.size, nextCell.animalPopulation.herbivores.size, nextCell.animalPopulation.carnivores.size
+            , nextCell.animalPopulation.humans.size, nextCell.water, this.calories, this.hydration);
+        if(nextValue > bestValue){
+            bestValue = nextValue;
+            best = possibleCells[coordinateSet];
+        }
+    }
+    
+    myBoard[this.x][this.y].animalPopulation.humans.add(this); //SUPER HACKY
+    return best;
+    /*
+    var changeX = randomInt(3) - 1;
+    var changeY = randomInt(3) - 1;
+    var toReturn = {};
+    toReturn.x = this.x + changeX;
+    toReturn.y = this.y + changeY;
+    if(toReturn.x < 0 || toReturn.x >= settings.boardSize){
+        toReturn.x = this.x;
+    }
+    if(toReturn.y < 0 || toReturn.y >= settings.boardSize){
+        toReturn.y = this.y;
+    } 
+    return toReturn;
+    */
+}
+
+Human.prototype.postMoveAction = function(){
+    var currentCell = this.game.board.board[this.x][this.y];
+    var availableHerbivores = currentCell.animalPopulation.herbivores;
+    if(availableHerbivores.size > 0){
+        var toEat = availableHerbivores.values().next().value;
+        availableHerbivores.delete(toEat);
+        this.calories += toEat.calories;
+        toEat.dead = true;
+    }
+
+    var availableWheat = currentCell.wheat;
+    if(availableWheat.size > 0){
+        var toEat = availableWheat.values().next().value;
+        availableWheat.delete(toEat);
+        this.calories += toEat.calories;
+        toEat.spread();
     }
 }
 
@@ -179,6 +287,7 @@ Herbivore.prototype.update = function(){
     } else {//if(this.calories == 4000) {
         if(this.calories == 4000 && Math.random() < 0.5){
             var theChild = new Herbivore(this.game, this.x, this.y, this);
+            this.calories = 2000;
             this.game.babyAnimals.push(theChild);
         }
     }
@@ -352,6 +461,7 @@ function Cell(game,x,y) {
     this.animalPopulation = {};
     this.animalPopulation.herbivores = new Set();
     this.animalPopulation.carnivores = new Set();
+    this.animalPopulation.humans = new Set();
     
     this.color = "Grey";
 }
@@ -542,17 +652,27 @@ function Automata(game) {
     }
 
     // add agents
-    while (this.animals.length < this.animalPopulationSize) {
-        var x = randomInt(this.dimension);
-        var y = randomInt(this.dimension);
+    for(var i = 0; i < this.animalPopulationSize; i++) {
+        if(settings.herbivores){
+            var x = randomInt(this.dimension);
+            var y = randomInt(this.dimension);
+            var animal = new Herbivore(game, x, y);
+            this.animals.push(animal);
+        }
 
-        var animal = new Herbivore(game, x, y);
-        this.animals.push(animal);
+        if(settings.carnivores){
+            var x = randomInt(this.dimension);
+            var y = randomInt(this.dimension);
+            animal = new Carnivore(game, x, y);
+            this.animals.push(animal);
+        }
 
-        x = randomInt(this.dimension);
-        y = randomInt(this.dimension);
-        animal = new Carnivore(game, x, y);
-        this.animals.push(animal);
+        if(settings.humans){
+            var x = randomInt(this.dimension);
+            var y = randomInt(this.dimension);
+            animal = new Human(game, x, y);
+            this.animals.push(animal);
+        }
     }
     
     
@@ -607,6 +727,7 @@ Automata.prototype.update = function () {
     }
     // console.log(this.game.gameController.floodSeason);
     // console.log(this.game.statistics.wheatTypeCount);
+    console.log("Human count: " + stats.humans);
 };
 
 Automata.prototype.draw_graph = function (ctx, baseX, baseY, proportions, proportionColors){
