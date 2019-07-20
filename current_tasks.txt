@@ -2,3 +2,20 @@ Create abstract animal class
 Extend into generic herbivore
 Clean code a little bit //Put shit into a single environment object that just maps SO WE DONT HAVE MAGIC NUMBERS
 Implement simple gui to display population statistics.
+
+
+TODO
+30 min Add calorie difference between animals// human and goats process wheat differently
+
+DONE
+10 min Take away food cap 
+30 min impact germination time
+1 hour Add behaviour genes
+
+
+TODO:
+1 Impact consumption time by humans/animals
+1.5 Hoarding by Humans 
+1 Caloric Genetics
+15 Drink at river tile/ water threshold
+3 Data gathering

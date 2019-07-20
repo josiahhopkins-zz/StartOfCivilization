@@ -6,6 +6,14 @@ function defaultFunction(value){
     return makeSureValueBetweenZeroAndOne(toReturn);
 }
 
+function getAttractionFromCountAndGenetics(organisms, genetic){
+    genetic = genetic - .5;
+    return organisms * genetic;
+}
+
+var data = {}
+
+
 var settings = {    
                 boardSize: 100,
                 drawingWidth: 8,
@@ -18,9 +26,43 @@ var settings = {
                     wheatColors: ["Black", "Grey", "Yellow"]
                 },
                 herbivores: true,
-                carnivores: true,
+                carnivores: false,
                 humans: true
             };
+
+
+function getSettings(){
+    settings.humans = document.getElementById("humans").checked;
+    settings.human_reproduction_calories = parseInt(document.getElementById("human_reproduction_calories").value);
+    settings.human_default_genes = {
+        to_carnivores: parseFloat(document.getElementById("human_at_wolf").value),
+        to_humans: parseFloat(document.getElementById("human_at_human").value),
+        to_herbivores: parseFloat(document.getElementById("human_at_goat").value),
+        to_wheat: parseFloat(document.getElementById("human_at_wheat").value),
+    };
+
+    settings.herbivores = document.getElementById("goats").checked;
+    settings.herbivore_reproduction_calories = parseInt(document.getElementById("goat_reproduction_calories").value);
+    settings.herbivore_default_genes = {
+        to_carnivores: parseFloat(document.getElementById("goat_at_wolf").value),
+        to_humans: parseFloat(document.getElementById("goat_at_human").value),
+        to_herbivores: parseFloat(document.getElementById("goat_at_goat").value),
+        to_wheat: parseFloat(document.getElementById("goat_at_wheat").value),
+    };
+    
+    settings.carnivores = document.getElementById("wolfs").checked;
+    settings.carnivore_reproduction_calories = parseInt(document.getElementById("wolf_reproduction_calories").value);
+    settings.carnivore_default_genes = {
+        to_carnivores: parseFloat(document.getElementById("wolf_at_wolf").value),
+        to_humans: parseFloat(document.getElementById("wolf_at_human").value),
+        to_herbivores: parseFloat(document.getElementById("wolf_at_goat").value),
+        to_wheat: parseFloat(document.getElementById("wolf_at_wheat").value),
+    };
+
+    Human.prototype.initial_genetics = settings.human_default_genes;
+    Herbivore.prototype.initial_genetics = settings.human_default_genes;
+    Carnivore.prototype.initial_genetics = settings.human_default_genes;
+}
 
 var stats = {
             humans: 0,
@@ -47,8 +89,27 @@ function rgb(r, g, b) {
 Animal.prototype.mutate = function(animal) {
     return animal.genome;
 }
+
+Animal.prototype.initial_genetics = {
+    to_carnivores: .5,
+    to_humans: .5,
+    to_herbivores: .5,
+    to_wheat: 1,
+}
+
 function Animal(game, x, y, animal){
     this.gene = new Genetics();
+    if(animal){
+        for(var key in animal.gene.valueMap){
+            var parentValue = animal.gene.valueMap[key];
+            this.gene.addProperty(key, parentValue.myFunction(parentValue.value), parentValue.myFunction)
+        }
+    } else {
+        this.gene.addProperty("carnivoreAmiability", this.initial_genetics.to_carnivores, defaultFunction);
+        this.gene.addProperty("humanAmiability", this.initial_genetics.to_humans, defaultFunction);
+        this.gene.addProperty("herbivoreAmiability", this.initial_genetics.to_herbivores, defaultFunction);
+        this.gene.addProperty("wheatAmiability", this.initial_genetics.to_wheat, defaultFunction);
+    }
     if(animal){
         for(var key in animal.gene.valueMap){
             var parentValue = animal.gene.valueMap[key];
@@ -63,7 +124,7 @@ function Animal(game, x, y, animal){
     this.color = "Magenta";
     this.age = 0;
     //this.genome = mutate(animal.genome)
-    this.hydration = 1;
+    this.hydration = 10;
     this.fullness = 1;
     this.x = x;
     this.y = y;
@@ -74,17 +135,22 @@ function Animal(game, x, y, animal){
 }
 
 Animal.prototype = new Entity();
+Animal.prototype.update = function(){
+    this.hydration -= 1;
+}
 
-var Carnivore = function(game, x, y, Carnivore){
+var Carnivore = function(game, x, y, carnivore){
    
 
-    Animal.call(this, game, x, y);
+    Animal.call(this, game, x, y, carnivore);
     this.color = "Orange";
     this.calories = 16000;
 }   
 
+Carnivore.prototype.initial_genetics = settings.carnivore_default_genes;
 
 Carnivore.prototype.update = function(){
+    Animal.prototype.update.call(this);
     if(!this.game.board.board[this.x][this.y].animalPopulation.carnivores.has(this)){
         this.game.board.board[this.x][this.y].animalPopulation.carnivores.add(this);
     }
@@ -92,7 +158,7 @@ Carnivore.prototype.update = function(){
     this.nextX = newLocation.x;
     this.nextY = newLocation.y;
     this.calories = Math.min(16000, this.calories - 350);
-    this.dead = this.dead || this.calories < 0;
+    this.dead = this.dead || this.calories < 0 || this.hydration < 0;
     if(this.dead){
         this.game.board.board[this.x][this.y].animalPopulation.carnivores.delete(this);
     } else {//if(this.calories == 4000) {
@@ -163,30 +229,43 @@ Carnivore.prototype.postMoveAction = function(){
         this.calories += toEat.calories;
         toEat.dead = true;
     }
+    if(currentCell.water > 5){
+        this.hydration += 2;
+    }
 }
 
-var Human = function(game, x, y, Human){
-    Carnivore.call(this, game, x, y);
+var Human = function(game, x, y, human){
+    Carnivore.call(this, game, x, y, human);
     this.color = "Brown";
-    this.calories = 16000;
+    if(human){  
+        this.calories = human.calories / 2;
+    } else {
+        this.calories = 16000
+    }
     stats.humans++;
 }   
 
+
+
+
+
 Human.prototype.update = function(){
+    Animal.prototype.update.call(this);
     if(!this.game.board.board[this.x][this.y].animalPopulation.humans.has(this)){
         this.game.board.board[this.x][this.y].animalPopulation.humans.add(this);
     }
     var newLocation = this.chooseMove();
     this.nextX = newLocation.x;
     this.nextY = newLocation.y;
-    this.calories = Math.min(16000, this.calories - 750);
-    this.dead = this.dead || this.calories < 0;
+    this.calories = this.calories - 650;
+    this.dead = this.dead || this.calories < 0 || this.hydration < 0;
     if(this.dead){
         this.game.board.board[this.x][this.y].animalPopulation.humans.delete(this);
         stats.humans--;
     } else {//if(this.calories == 4000) {
-        if(Math.random() < 0.02){
+        if(this.calories > 16000 && Math.random() < 0.5){
             var theChild = new Human(this.game, this.x, this.y, this);
+            this.calories = this.calories / 2;
             this.game.babyAnimals.push(theChild);
         }
     }
@@ -199,12 +278,20 @@ Human.prototype.move = function(){
     this.game.board.board[this.x][this.y].animalPopulation.humans.add(this);
 }
 
-function humanMovePriority(wheatCount, herbivoreCount, wolfCount, humanCount, water, calories, thirst){
+Human.prototype.humanMovePriority = function(wheatCount, herbivoreCount, wolfCount, humanCount, water, calories, thirst){
+    var total = 0;
+    total += getAttractionFromCountAndGenetics(wheatCount, this.gene.valueMap["wheatAmiability"]);
+    total += getAttractionFromCountAndGenetics(herbivoreCount, this.gene.valueMap["herbivoreAmiability"]);
+    total += getAttractionFromCountAndGenetics(wolfCount, this.gene.valueMap["wolfAmiability"]);
+    total += getAttractionFromCountAndGenetics(humanCount, this.gene.valueMap["humanAmiability"]);
+    return total;
+/*
     if(wheatCount === 0 && herbivoreCount === 0){ 
         return -10000000;
     } else {
         return ((wheatCount + herbivoreCount) - humanCount) * (humanCount);
     }
+    */
 }
 
 Human.prototype.chooseMove = function(){
@@ -214,13 +301,13 @@ Human.prototype.chooseMove = function(){
     var starter = randomInt(possibleCells.length);
     var best = possibleCells[starter];
     var bestCell = myBoard[possibleCells[starter].x][possibleCells[starter].y];
-    var bestValue = humanMovePriority(bestCell.wheat.size, bestCell.animalPopulation.herbivores.size, bestCell.animalPopulation.carnivores.size
+    var bestValue = this.humanMovePriority(bestCell.wheat.size, bestCell.animalPopulation.herbivores.size, bestCell.animalPopulation.carnivores.size
                                         , bestCell.animalPopulation.humans.size, bestCell.water, this.calories, this.hydration);
     possibleCells.splice(starter, 1);
     var ties = [];
     for(var coordinateSet = 1; coordinateSet < possibleCells.length; coordinateSet++){
         var nextCell = myBoard[possibleCells[coordinateSet].x][possibleCells[coordinateSet].y];
-        var nextValue = humanMovePriority(nextCell.wheat.size, nextCell.animalPopulation.herbivores.size, nextCell.animalPopulation.carnivores.size
+        var nextValue = this.humanMovePriority(nextCell.wheat.size, nextCell.animalPopulation.herbivores.size, nextCell.animalPopulation.carnivores.size
             , nextCell.animalPopulation.humans.size, nextCell.water, this.calories, this.hydration);
         if(nextValue > bestValue){
             bestValue = nextValue;
@@ -261,33 +348,45 @@ Human.prototype.postMoveAction = function(){
         var toEat = availableWheat.values().next().value;
         availableWheat.delete(toEat);
         this.calories += toEat.calories;
-        toEat.spread();
+        if(toEat.age > toEat.reproductionAge){
+            toEat.spread();
+        }
+    }
+    if(currentCell.water > 5){
+        this.hydration += 2;
     }
 }
 
-var Herbivore = function(game, x, y, Herbivore){
-   
-
+var Herbivore = function(game, x, y, herbivore){
     Animal.call(this, game, x, y);
     this.color = "Purple";
-    this.calories = 4000;
+    if(herbivore){  
+        this.calories = herbivore.calories / 2;
+    } else {
+        this.calories = 16000;
+    }
 }   
 
+
+
+Herbivore.prototype.initial_genetics = settings.herbivore_default_genes;
+
 Herbivore.prototype.update = function(){
+    Animal.prototype.update.call(this);
     if(!this.game.board.board[this.x][this.y].animalPopulation.herbivores.has(this)){
         this.game.board.board[this.x][this.y].animalPopulation.herbivores.add(this);
     }
     var newLocation = this.chooseMove();
     this.nextX = newLocation.x;
     this.nextY = newLocation.y;
-    this.calories = Math.min(4000, this.calories - 350);
-    this.dead = this.dead || this.calories < 0;
+    this.calories = this.calories - 350;
+    this.dead = this.dead || this.calories < 0 || this.hydration < 0;
     if(this.dead){
         this.game.board.board[this.x][this.y].animalPopulation.herbivores.delete(this);
     } else {//if(this.calories == 4000) {
-        if(this.calories == 4000 && Math.random() < 0.5){
+        if(this.calories >= 16000 && Math.random() < 0.5){
             var theChild = new Herbivore(this.game, this.x, this.y, this);
-            this.calories = 2000;
+            this.calories = this.calories / 2;
             this.game.babyAnimals.push(theChild);
         }
     }
@@ -341,7 +440,13 @@ Herbivore.prototype.postMoveAction = function(){
         var toEat = availableWheat.values().next().value;
         availableWheat.delete(toEat);
         this.calories += toEat.calories;
-        toEat.spread();
+        if(toEat.age > toEat.reproductionAge){
+            toEat.spread();
+        }
+    }
+
+    if(currentCell.water > 5){
+        this.hydration += 2;
     }
 }
 
@@ -354,6 +459,7 @@ function Agent(game, x, y, agent) {
         }
     } else {
         this.gene.addProperty("seedWeight", .5, defaultFunction);
+        this.gene.addProperty("germSize", .5, defaultFunction);
     }
     if (agent) {
         var bit = randomInt(2)
@@ -370,7 +476,7 @@ function Agent(game, x, y, agent) {
     this.age = 0;
     this.color = rgb(val,val,val);
     this.geneticType = placeWheatInBucket(game, this.seedWeight);
-    this.calories = 1000;
+    this.calories = 1500;
 
     this.dropDistance = this.calcDropDistance();
     this.numOfSeeds = this.calcSeedDrop();
@@ -396,11 +502,15 @@ Agent.prototype.calcReproductionAge = function(){
     return settings.wheat.baseReproductionAge * this.seedWeight;
 }
 
+Agent.prototype.isReadyToGerminate = function(){
+    return settings.wheat.baseReproductionAge * this.seedWeight;
+}
+
 Agent.prototype.update = function () {
     var cell = this.game.board.board[this.x][this.y];
     var seedHardiness = this.seedWeight * this.seedWeight;
 
-    if(this.isSeed){
+    if(this.isSeed && this.isReadyToGerminate()){
         if(cell.water > 0 && (Math.random() > 0.02 * cell.wheat.size * cell.wheat.size)){
             this.isSeed = false;
             cell.water -= 1;
@@ -565,8 +675,11 @@ function removeWheatInBucket(game, wheatValue){
 }
 
 
+
+
 function Automata(game) {
     var SPLITCHANCE = .01;
+    game.turn = 0;
     this.dimension = 100;
     this.populationSize = 1000;
     this.animalPopulationSize = 50;
@@ -639,53 +752,29 @@ function Automata(game) {
         nextRiverTiles = [];
     }
 
-    // add agents
-    
-    while (this.agents.length < this.populationSize) {
-        var x = randomInt(this.dimension);
-        var y = randomInt(this.dimension);
-
-        if(!this.board[x][y].isRiver){
-            var agent = new Agent(game, x, y);
-            this.agents.push(agent);
-        }
+    this.addWheat(game);
+    if(settings.herbivores){
+        this.addHerbivores(game);
+    }
+    if(settings.humans){
+        this.addHumans(game);
+    }
+    if(settings.carnivores){
+        this.addCarnivores(game);
     }
 
-    // add agents
-    for(var i = 0; i < this.animalPopulationSize; i++) {
-        if(settings.herbivores){
-            var x = randomInt(this.dimension);
-            var y = randomInt(this.dimension);
-            var animal = new Herbivore(game, x, y);
-            this.animals.push(animal);
-        }
-
-        if(settings.carnivores){
-            var x = randomInt(this.dimension);
-            var y = randomInt(this.dimension);
-            animal = new Carnivore(game, x, y);
-            this.animals.push(animal);
-        }
-
-        if(settings.humans){
-            var x = randomInt(this.dimension);
-            var y = randomInt(this.dimension);
-            animal = new Human(game, x, y);
-            this.animals.push(animal);
-        }
-    }
     
     
     Entity.call(this, game, 0, 0);
 };
 
 
-
-
 Automata.prototype = new Entity();
 Automata.prototype.constructor = Automata;
 
 Automata.prototype.update = function () {
+    this.game.turn += 1;
+    console.log(this.game.turn);
     for (var i = 0; i < this.animals.length; i++) {
         this.animals[i].update();
     }
@@ -725,10 +814,66 @@ Automata.prototype.update = function () {
             this.board[i][j].update();
         }
     }
+    if(this.game.turn === 300){
+        if(settings.herbivores){
+            this.addHerbivores(this.game);
+        }
+        if(settings.humans){
+            this.addHumans(this.game);
+        }
+        if(settings.carnivores){
+            this.addCarnivores(this.game);
+        }
+    }
     // console.log(this.game.gameController.floodSeason);
     // console.log(this.game.statistics.wheatTypeCount);
     console.log("Human count: " + stats.humans);
 };
+
+
+
+Automata.prototype.addHumans = function(game) {
+    // add agents
+    for(var i = 0; i < this.animalPopulationSize; i++) {
+        var x = randomInt(this.dimension);
+        var y = randomInt(this.dimension);
+        animal = new Human(game, x, y);
+        this.animals.push(animal);
+    }
+}
+
+Automata.prototype.addWheat = function(game) {
+    // add agents
+    while (this.agents.length < this.populationSize) {
+        var x = randomInt(this.dimension);
+        var y = randomInt(this.dimension);
+
+        if(!this.board[x][y].isRiver){
+            var agent = new Agent(game, x, y);
+            this.agents.push(agent);
+        }
+    }
+}
+
+Automata.prototype.addHerbivores = function(game) {
+    // add agents
+    for(var i = 0; i < this.animalPopulationSize; i++) {
+        var x = randomInt(this.dimension);
+        var y = randomInt(this.dimension);
+        var animal = new Herbivore(game, x, y);
+        this.animals.push(animal);
+    }
+}
+
+Automata.prototype.addCarnivores = function(game) {
+    // add agents
+    for(var i = 0; i < this.animalPopulationSize; i++) {
+        var x = randomInt(this.dimension);
+        var y = randomInt(this.dimension);
+        var animal = new Carnivore(game, x, y);
+        this.animals.push(animal);
+    }
+}
 
 Automata.prototype.draw_graph = function (ctx, baseX, baseY, proportions, proportionColors){
     width = settings.drawingWidth;
@@ -786,6 +931,17 @@ function add(a, b) {
     return a + b;
 }
 
+function myFunction() {
+    var x = document.getElementById("frm1");
+    var text = "";
+    var i;
+    for (i = 0; i < x.length ;i++) {
+      text += x.elements[i].value + "<br>";
+    }
+    console.log(text)
+    //document.getElementById("demo").innerHTML = text;
+  }
+
 
 // the "main" code begins here
 
@@ -796,11 +952,11 @@ ASSET_MANAGER.queueDownload("./img/black.png");
 ASSET_MANAGER.queueDownload("./img/white.png");
 
 ASSET_MANAGER.downloadAll(function () {
+    getSettings();
     console.log("starting up da sheild");
     var canvas = document.getElementById('gameWorld');
     var ctx = canvas.getContext('2d');
     graphCtx = document.getElementById('graphWorld').getContext('2d');
-    
     var gameEngine = new GameEngine();
     var automata = new Automata(gameEngine);
     gameEngine.addEntity(automata);
@@ -808,3 +964,19 @@ ASSET_MANAGER.downloadAll(function () {
     gameEngine.init(ctx);
     gameEngine.start();
 });
+
+function initiliaze_game(){
+    getSettings();
+    ASSET_MANAGER.downloadAll(function () {
+        console.log("starting up da sheild");
+        var canvas = document.getElementById('gameWorld');
+        var ctx = canvas.getContext('2d');
+        graphCtx = document.getElementById('graphWorld').getContext('2d');
+        var gameEngine = new GameEngine();
+        var automata = new Automata(gameEngine);
+        gameEngine.addEntity(automata);
+        gameEngine.board = automata;
+        gameEngine.init(ctx);
+        gameEngine.start();
+    });
+}

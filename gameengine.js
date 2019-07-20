@@ -55,7 +55,7 @@ GameEngine.prototype.start = function () {
                             turn:1, 
                             floodSeason: false, 
                             settings: {
-                                floodTurns: 100
+                                floodTurns: 15
                             }
                         };
     (function gameLoop() {

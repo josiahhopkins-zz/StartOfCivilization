@@ -8,11 +8,41 @@
     <script type="text/javascript" src="./gameengine.js"></script>
     <script type="text/javascript" src="./main.js"></script>
     <script type="text/javascript" src="./genetics.js"></script>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div>Right click and "Inspect Element".  Select the Console Tab to see the debugger output.</div>
 
     <canvas id="gameWorld" width="800" height="800" style="border: 1px solid white; background: black"></canvas>
     <canvas id="graphWorld" width="800" height="800" style="border: 1px solid white; background: black"></canvas>
+    <form id="frm1">
+        Humans: <input type="checkbox" name="humans" id="humans" value="add_humans" checked><br>
+        Human calories required to reproduce: <input type="text" name="human_reproduction_calories" id="human_reproduction_calories" value="16000"><br>
+        Human default wheat attraction: <input type="text" name="human_at_wheat" id="human_at_wheat" value="1"><br>
+        Human default human attraction: <input type="text" name="human_at_human" id="human_at_human" value=".5"><br>
+        Human default goat attraction: <input type="text" name="human_at_goat" id="human_at_goat" value="1"><br>
+        Human default wolf attraction: <input type="text" name="human_at_wolf" id="human_at_wolf" value=".5"><br>
+        <br>
+        Goats: <input type="checkbox" name="goats" id="goats" value="add_goats" checked><br>
+        Goat calories required to reproduce: <input type="text" name="goat_reproduction_calories" id="goat_reproduction_calories" value="16000"><br>
+        Goat default wheat attraction: <input type="text" name="goat_at_wheat" id="goat_at_wheat" value="1"><br>
+        Goat default human attraction: <input type="text" name="goat_at_human" id="goat_at_human" value=".5"><br>
+        Goat default goat attraction: <input type="text" name="goat_at_goat" id="goat_at_goat" value="1"><br>
+        Goat default wolf attraction: <input type="text" name="goat_at_wolf" id="goat_at_wolf" value=".5"><br>
+        <br>
+        Wolfs: <input type="checkbox" name="wolfs" id="wolfs" value="add_wolves" unchecked><br>
+        Wolf calories required to reproduce: <input type="text" name="wolf_reproduction_calories" id="wolf_reproduction_calories" value="16000"><br>
+        Wolf default wheat attraction: <input type="text" name="wolf_at_wheat" id="wolf_at_wheat" value="1"><br>
+        Wolf default human attraction: <input type="text" name="wolf_at_human" id="wolf_at_human" value=".5"><br>
+        Wolf default goat attraction: <input type="text" name="wolf_at_goat" id="wolf_at_goat" value="1"><br>
+        Wolf default wolf attraction: <input type="text" name="wolf_at_wolf" id="wolf_at_wolf" value=".5"><br>
+        <br>
+        Wheats: <input type="checkbox" name="wheats" id="wheats" value="add_wheats" checked><br>
+        Wheat calories required to reproduce: <input type="text" name="wheat_reproduction_calories" id="wheat_reproduction_calories" value="16000"><br>
+        Wheat default seed weight: <input type="text" name="seed_weight" id="seed_weight" value=".5"><br>
+        Wheat default germ size: <input type="text" name="germ_size" id="germ_size" value=".5"><br>
+        <br>
+        <input type="submit" value="start game" onclick="return initialize_game();">
+      </form> 
 </body>
 </html>
