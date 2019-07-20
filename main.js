@@ -1,5 +1,8 @@
 var graphCtx = null;
 
+var CONSTANTS = {
+}
+
 function defaultFunction(value){
     var bit = randomInt(2);
     toReturn = value + Math.pow(-1, bit) * Math.random() * 0.1;
@@ -130,6 +133,7 @@ function Animal(game, x, y, animal){
     this.y = y;
     this.dead = false;
     this.calories = 2000;
+    this.gestation_period = 50;
 
     Entity.call(this, game, x, y);
 }
