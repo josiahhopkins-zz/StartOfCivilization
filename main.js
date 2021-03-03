@@ -1,3 +1,11 @@
+/*
+Tasks:
+    Move animals to another class
+    make functions under 10 lines.
+*/
+
+
+
 var graphCtx = null;
 
 var CONSTANTS = {
@@ -100,6 +108,7 @@ Animal.prototype.initial_genetics = {
     to_wheat: 1,
 }
 
+//    individuals more represent groups not individuals, hence reproduction is not asexual 
 function Animal(game, x, y, animal){
     this.gene = new Genetics();
     if(animal){
@@ -777,6 +786,26 @@ Automata.prototype = new Entity();
 Automata.prototype.constructor = Automata;
 
 Automata.prototype.update = function () {
+    /*
+
+    move 
+
+
+    action
+    
+
+    die/birth
+
+
+    draw
+
+
+    */
+
+
+
+
+
     this.game.turn += 1;
     console.log(this.game.turn);
     for (var i = 0; i < this.animals.length; i++) {
